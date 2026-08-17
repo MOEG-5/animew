@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=AnimeList Widget
+Comment=Desktop widget tracking mpv playback and syncing MyAnimeList
+Exec=env PYTHONPATH=/PATH/TO/animelist /PATH/TO/animelist/.venv/bin/python -m animelist.widget
+Path=/PATH/TO/animelist
+X-GNOME-Autostart-enabled=true
+X-XFCE-Autostart-enabled=true
+Terminal=false

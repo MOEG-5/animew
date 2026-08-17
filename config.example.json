@@ -1,0 +1,6 @@
+{
+  "mpv_sockets": ["/tmp/mpvsocket", "/tmp/mpv.sock"],
+  "mal_client_id": "PASTE_YOUR_CLIENT_ID",
+  "mal_client_secret": "PASTE_YOUR_CLIENT_SECRET_IF_YOU_HAVE_ONE",
+  "callback_url": "http://localhost:8765/callback"
+}
