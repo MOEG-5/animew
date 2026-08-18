@@ -18,6 +18,7 @@ import requests
 from . import config
 from .auth import TokenStore, refresh_access_token
 from .images import ensure_image
+from .mal import franchise_synopsis, is_real_synopsis
 
 LIST_FIELDS = "list_status"
 _PAGE = 100
@@ -199,7 +200,7 @@ class MALSync:
             try:
                 dd = self._request(
                     "GET", f"/anime/{rid}",
-                    params={"fields": "id,media_type,num_episodes"},
+                    params={"fields": "id,title,media_type,num_episodes,main_picture,synopsis,related_anime"},
                 )
             except (SyncError, requests.RequestException):
                 continue
@@ -224,6 +225,25 @@ class MALSync:
             except (SyncError, requests.RequestException):
                 continue
             if self.store is not None:
+                # Create the local card row too — otherwise the completed
+                # prequel never appears in the widget grid until a MAL list
+                # import happens on the next reboot.
+                synopsis = (dd.get("synopsis") or "").strip()
+                if not is_real_synopsis(synopsis):
+                    synopsis = franchise_synopsis(
+                        lambda mid: self._request(
+                            "GET", f"/anime/{mid}",
+                            params={"fields": "id,synopsis,related_anime"}),
+                        rid,
+                    ) or synopsis
+                pic = dd.get("main_picture") or {}
+                image_url = pic.get("large") or pic.get("medium")
+                image_path = ensure_image(image_url, rid) if image_url else None
+                self.store.upsert_anime(
+                    rid, dd.get("title") or "", dd.get("media_type"),
+                    dd.get("num_episodes"), synopsis, image_path,
+                    f"https://myanimelist.net/anime/{rid}",
+                )
                 self.store.set_mal_status(rid, "completed", progress, cur.get("score"), None)
                 self.store.mark_episodes_watched(rid, min(progress, 2000))
             self._complete_prequels(rid, depth - 1, visited)

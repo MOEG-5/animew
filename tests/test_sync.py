@@ -134,7 +134,13 @@ class SyncTest(unittest.TestCase):
                     ],
                 })
             if method == "GET" and "/anime/100" in url:
-                return FakeResp({"id": 100, "media_type": "tv", "num_episodes": 12})
+                return FakeResp({
+                    "id": 100, "title": "Show", "media_type": "tv",
+                    "num_episodes": 12,
+                    "synopsis": "The first season's real synopsis. " * 10,
+                    "main_picture": {},
+                    "related_anime": [],
+                })
             return FakeResp({})
 
         self.session.handler = handler
@@ -147,6 +153,42 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(m100, {"status": "completed", "num_watched_episodes": 12})
         self.assertEqual(self.store.get_mal_status(100)["status"], "completed")
         self.assertTrue(self.store.is_watched(100, 12))
+        # the completed prequel must get a local card row too, otherwise it
+        # never shows in the widget grid until the next MAL list import
+        row = self.store.get_anime(100)
+        self.assertIsNotNone(row)
+        self.assertEqual(row["title"], "Show")
+        self.assertEqual(row["num_episodes"], 12)
+        self.assertTrue(row["synopsis"].startswith("The first season's real synopsis"))
+        self.assertEqual(row["mal_url"], "https://myanimelist.net/anime/100")
+
+    def test_prequel_completion_backfills_stub_synopsis(self):
+        # Completing S2 creates S1's local card; when S1's own synopsis is a
+        # MAL stub, walk one more prequel to the first season's real text.
+        def handler(method, url, params, data):
+            if method == "GET" and "/anime/101" in url:
+                return FakeResp({
+                    "id": 101, "media_type": "tv", "num_episodes": 12,
+                    "related_anime": [{"node": {"id": 100}, "relation_type": "prequel"}],
+                })
+            if method == "GET" and "/anime/100" in url:
+                return FakeResp({
+                    "id": 100, "title": "Show S1", "media_type": "tv",
+                    "num_episodes": 12, "synopsis": "Second season of Show.",
+                    "related_anime": [{"node": {"id": 99}, "relation_type": "prequel"}],
+                })
+            if method == "GET" and "/anime/99" in url:
+                return FakeResp({
+                    "id": 99, "synopsis": "The real first season synopsis. " * 10,
+                    "related_anime": [],
+                })
+            return FakeResp({})
+
+        self.session.handler = handler
+        self.sync.push_episode(101, 5, 12)
+        row = self.store.get_anime(100)
+        self.assertIsNotNone(row)
+        self.assertTrue(row["synopsis"].startswith("The real first season synopsis"))
 
     def test_prequel_chain_through_movie(self):
         # MAL often routes S2 -> prequel Movie -> prequel S1 (e.g. Youjo Senki).

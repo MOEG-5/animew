@@ -197,6 +197,25 @@ class TestStore(unittest.TestCase):
         self.store.upsert_anime(1, "A")
         self.assertTrue(self.store.has_data())
 
+    def test_rows_needing_details(self):
+        self.store.upsert_anime(1, "A", "tv", 12, None)                       # no synopsis
+        self.store.upsert_anime(2, "B", "tv", 12, "Second season of B.")      # stub
+        self.store.upsert_anime(3, "C", "tv", None, "A real synopsis " * 30)  # num missing
+        self.store.upsert_anime(4, "D", "tv", 12, "A real synopsis " * 30)    # complete
+        ids = {r["mal_id"] for r in self.store.rows_needing_details()}
+        self.assertEqual(ids, {1, 2, 3})
+
+    def test_rows_needing_details_includes_orphans(self):
+        # Orphans: watched/mal_list rows with no anime row (e.g. prequels
+        # completed by franchise sync before they got a local card).
+        self.store.upsert_anime(1, "A", "tv", 12, "A real synopsis " * 30)
+        self.store.mark_watched(5)                                    # orphan
+        self.store.set_mal_status(6, "watching", 1, None, None)       # orphan
+        ids = {r["mal_id"] for r in self.store.rows_needing_details()}
+        self.assertIn(5, ids)
+        self.assertIn(6, ids)
+        self.assertNotIn(1, ids)
+
     def test_settings(self):
         self.assertIsNone(self.store.get_setting("nope"))
         self.store.set_setting("last_check", "2025-08-17T12:00:00")

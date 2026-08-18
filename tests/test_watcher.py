@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from animelist.mal import franchise_synopsis, is_real_synopsis
 from animelist.store import Store
 from animelist.watcher import WatchWorker
 
@@ -31,6 +32,20 @@ class FakeMAL:
             return self.anime_map[mal_id]
         d = dict(self.details)
         d["id"] = mal_id
+        return d
+
+    def details_with_synopsis(self, mal_id, fields=""):
+        """Mirror of MALClient.details_with_synopsis: replace a stub synopsis
+        with the first real one found along the prequel chain."""
+        d = self.anime(mal_id, fields=fields)
+        if not is_real_synopsis(d.get("synopsis")):
+            real = franchise_synopsis(
+                lambda mid: self.anime(mid, fields="id,synopsis,related_anime"),
+                mal_id,
+            )
+            if real:
+                d = dict(d)
+                d["synopsis"] = real
         return d
 
 
@@ -195,6 +210,29 @@ class WatcherTest(unittest.TestCase):
         self.worker.handle_event({"type": "file", "filename": "[Demo] Plain Show - 02 (1080p).mkv"})
         msgs = self.drain()
         self.assertEqual(msgs[0]["mal_id"], 55)
+
+    def test_stub_synopsis_falls_back_to_first_season(self):
+        s2 = {"id": 101, "title": "Show 2nd Season", "image_url": None, "media_type": "tv"}
+        s2_details = {
+            "id": 101, "title": "Show 2nd Season", "main_picture": {},
+            "synopsis": "Second season of Show.", "media_type": "tv",
+            "num_episodes": 12,
+            "related_anime": [{"node": {"id": 100, "title": "Show"},
+                                "relation_type": "prequel"}],
+        }
+        s1_details = {
+            "id": 100, "title": "Show", "main_picture": {},
+            "synopsis": "The first season's real synopsis, long enough to pass. " * 10,
+            "media_type": "tv", "num_episodes": 12, "related_anime": [],
+        }
+        self.worker.mal = FakeMAL(
+            results=[s2], anime_map={101: dict(s2_details), 100: dict(s1_details)})
+        self.worker.handle_event(
+            {"type": "file", "filename": "[Demo] Show S2 - 01 (1080p).mkv"})
+        row = self.store.get_anime(101)
+        self.assertIsNotNone(row)
+        self.assertEqual(row["synopsis"], s1_details["synopsis"].strip())
+        self.assertEqual(row["num_episodes"], 12)
 
     def test_repick_pushes_confirmed_episode_to_sync(self):
         class FakeSync:

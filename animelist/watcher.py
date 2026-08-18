@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from .images import ensure_image
 from .ipc import watch_socket
-from .mal import MALClient
+from .mal import MALClient, is_real_synopsis
 from .parser import parse_title
 from .store import Store
 
@@ -23,8 +23,6 @@ DEFAULT_THRESHOLD = 600.0  # seconds of actual playback (PRD F3: 10 minutes)
 # Season markers commonly found in release filenames, e.g. "Show S2",
 # "Show Season 2", "Show 2nd Season".
 SEASON_RE = re.compile(r"(?i)\b(?:s\d{1,2}|season\s*\d{1,2}|\d{1,2}(?:st|nd|rd|th)\s*season)\b")
-
-DETAIL_FIELDS = "id,title,main_picture,synopsis,media_type,num_episodes,status,start_date"
 
 
 @dataclass
@@ -203,10 +201,11 @@ class WatchWorker:
 
     def _fetch_details_if_needed(self, mal_id: int) -> tuple[str | None, int | None]:
         row = self.store.get_anime(mal_id)
-        if row and row.get("synopsis"):
-            return row["synopsis"], row.get("num_episodes")
+        if (row and is_real_synopsis(row.get("synopsis"))
+                and row.get("num_episodes") is not None):
+            return row["synopsis"], row["num_episodes"]
         try:
-            d = self.mal.anime(mal_id, fields=DETAIL_FIELDS)
+            d = self.mal.details_with_synopsis(mal_id)
             return (d.get("synopsis") or ""), d.get("num_episodes")
         except Exception:
             return None, None
@@ -259,7 +258,7 @@ class WatchWorker:
         if old == new:
             return
         try:
-            d = self.mal.anime(new, fields=DETAIL_FIELDS)
+            d = self.mal.details_with_synopsis(new)
         except Exception as exc:
             self.out.put({"type": "resolve_failed", "reason": f"repick: {exc}"})
             return

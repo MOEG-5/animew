@@ -12,6 +12,7 @@ from __future__ import annotations
 import queue
 import subprocess
 import sys
+import textwrap
 import threading
 
 from PySide6.QtCore import QTimer, QUrl, Qt
@@ -81,6 +82,20 @@ QPushButton { background-color: #33363f; border: none; border-radius: 6px; paddi
 QPushButton:hover { background-color: #3d4150; }
 QToolTip { background-color: #16171d; color: #d4d6e0; border: 1px solid #33363f; padding: 6px; }
 """
+
+
+def wrap_tooltip(text: str, width: int = 72, max_chars: int = 500) -> str:
+    """Normalize whitespace and hard-wrap tooltip text to a readable column
+    width. Qt tooltips otherwise wrap only at screen width, so short synopses
+    render as a couple of giant lines."""
+    text = " ".join(text.split())
+    if len(text) > max_chars:
+        cut = text[:max_chars]
+        cut = cut.rsplit(" ", 1)[0] if " " in cut else cut
+        text = cut.rstrip(" ,.;:") + " …"
+    lines = textwrap.wrap(text, width=width, break_long_words=False,
+                          break_on_hyphens=False)
+    return "\n".join(lines) if lines else ""
 
 
 def crop_fill(pix: QPixmap, w: int, h: int) -> QPixmap:
@@ -168,7 +183,7 @@ class Card(QFrame):
 
         synopsis = self.info.get("synopsis")
         if synopsis:
-            self.setToolTip(synopsis[:500])
+            self.setToolTip(wrap_tooltip(synopsis))
 
         if self.info.get("has_new"):
             self._add_badge()
@@ -797,6 +812,40 @@ def main(argv: list[str] | None = None) -> int:
     threading.Thread(target=worker.run, daemon=True, name="mpv-watcher").start()
 
     mal = MALClient()
+
+    def _backfill_details():
+        """Fetch real details (synopsis, episode count, image) for rows the
+        MAL list import created without them, replace "Second season of X."
+        stubs with the first season's synopsis, and create cards for orphan
+        ids (watched/mal_list rows with no anime row — e.g. prequels
+        completed by franchise sync before this fix)."""
+        from .images import ensure_image
+        import time as _time
+
+        updated = 0
+        for row in store.rows_needing_details():
+            try:
+                d = mal.details_with_synopsis(row["mal_id"])
+            except Exception:
+                continue
+            pic = d.get("main_picture") or {}
+            image_url = pic.get("large") or pic.get("medium")
+            image_path = ensure_image(image_url, row["mal_id"]) if image_url else None
+            store.upsert_anime(
+                row["mal_id"], d.get("title") or row["title"] or "",
+                d.get("media_type"), d.get("num_episodes"),
+                d.get("synopsis") or "", image_path,
+                f"https://myanimelist.net/anime/{row['mal_id']}",
+            )
+            updated += 1
+            _time.sleep(1.2)  # MAL v2 allows ~60 requests/min
+        if updated:
+            print(f"[widget] backfilled details for {updated} anime", file=sys.stderr)
+            out.put({"type": "refresh"})
+
+    threading.Thread(target=_backfill_details, daemon=True,
+                     name="detail-backfill").start()
+
     checker = NewContentChecker(store, mal, out)
     widget = Widget(cfg, store, out, cmd, mal, sync, checker)
     widget.show()

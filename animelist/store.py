@@ -256,6 +256,33 @@ class Store:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def rows_needing_details(self, min_synopsis_len: int = 200) -> list[dict]:
+        """Anime rows that would benefit from a details backfill:
+
+        - known rows whose synopsis is missing or a MAL stub ("Second season
+          of X."), or whose episode count is unknown, plus
+        - orphan ids that are watched or on the MAL list but have no ``anime``
+          row yet (e.g. prequels completed by franchise sync) — they need a
+          full detail fetch to become visible cards.
+
+        Returns ``[{"mal_id": int, "title": str | None}]``.
+        """
+        with self._lock:
+            rows = self._db.execute(
+                """SELECT mal_id, title FROM anime
+                   WHERE synopsis IS NULL OR length(trim(synopsis)) < ?
+                      OR num_episodes IS NULL
+                   UNION
+                   SELECT DISTINCT w.mal_id AS mal_id, NULL AS title FROM watched w
+                   LEFT JOIN anime a ON a.mal_id = w.mal_id WHERE a.mal_id IS NULL
+                   UNION
+                   SELECT DISTINCT m.mal_id AS mal_id, NULL AS title FROM mal_list m
+                   LEFT JOIN anime a ON a.mal_id = m.mal_id WHERE a.mal_id IS NULL
+                   ORDER BY mal_id""",
+                (min_synopsis_len,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     # -- settings -------------------------------------------------------------
 
     def get_setting(self, key: str, default: str | None = None) -> str | None:
