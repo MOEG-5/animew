@@ -216,6 +216,36 @@ class TestStore(unittest.TestCase):
         self.assertIn(6, ids)
         self.assertNotIn(1, ids)
 
+    def test_rows_needing_details_respects_retry_cooldown(self):
+        # A genuinely short synopsis (stub, no prequel to fall back on) must
+        # not be re-fetched on every startup — after an attempt it waits out
+        # the cooldown, then becomes eligible again.
+        from datetime import datetime, timedelta, timezone
+
+        self.store.upsert_anime(1, "A", "tv", 12, "Short synopsis.")
+        self.store.set_details_attempted(1)  # attempted "now"
+        self.assertEqual(self.store.rows_needing_details(), [])
+        past = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat(timespec="seconds")
+        self.store.set_details_attempted(1, past)
+        self.assertEqual([r["mal_id"] for r in self.store.rows_needing_details()], [1])
+
+    def test_set_details_attempted_on_missing_row_is_safe(self):
+        self.store.set_details_attempted(9999)  # no such row: no-op, no error
+        self.assertEqual(self.store.rows_needing_details(), [])
+
+    def test_migration_adds_details_attempted_column(self):
+        import sqlite3
+
+        db = Path(self.tmp.name) / "mig2.db"
+        conn = sqlite3.connect(str(db))
+        conn.execute("CREATE TABLE anime (mal_id INTEGER PRIMARY KEY, title TEXT NOT NULL)")
+        conn.commit()
+        conn.close()
+        s = Store(db)
+        cols = {r[1] for r in s._db.execute("PRAGMA table_info(anime)")}
+        self.assertIn("details_attempted_at", cols)
+        s.close()
+
     def test_settings(self):
         self.assertIsNone(self.store.get_setting("nope"))
         self.store.set_setting("last_check", "2025-08-17T12:00:00")

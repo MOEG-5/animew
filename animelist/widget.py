@@ -818,7 +818,13 @@ def main(argv: list[str] | None = None) -> int:
         MAL list import created without them, replace "Second season of X."
         stubs with the first season's synopsis, and create cards for orphan
         ids (watched/mal_list rows with no anime row — e.g. prequels
-        completed by franchise sync before this fix)."""
+        completed by franchise sync before this fix).
+
+        API etiquette: one row per ~1.2s (≈50 req/min sustained, under MAL's
+        limit), an unconditional pause even when a fetch fails (so an offline
+        startup does not rapid-fire), and each attempted row gets a 7-day
+        cooldown — a genuinely short synopsis with no prequel to fall back on
+        is retried at most weekly, not on every launch."""
         from .images import ensure_image
         import time as _time
 
@@ -826,18 +832,19 @@ def main(argv: list[str] | None = None) -> int:
         for row in store.rows_needing_details():
             try:
                 d = mal.details_with_synopsis(row["mal_id"])
+                pic = d.get("main_picture") or {}
+                image_url = pic.get("large") or pic.get("medium")
+                image_path = ensure_image(image_url, row["mal_id"]) if image_url else None
+                store.upsert_anime(
+                    row["mal_id"], d.get("title") or row["title"] or "",
+                    d.get("media_type"), d.get("num_episodes"),
+                    d.get("synopsis") or "", image_path,
+                    f"https://myanimelist.net/anime/{row['mal_id']}",
+                )
+                store.set_details_attempted(row["mal_id"])
+                updated += 1
             except Exception:
-                continue
-            pic = d.get("main_picture") or {}
-            image_url = pic.get("large") or pic.get("medium")
-            image_path = ensure_image(image_url, row["mal_id"]) if image_url else None
-            store.upsert_anime(
-                row["mal_id"], d.get("title") or row["title"] or "",
-                d.get("media_type"), d.get("num_episodes"),
-                d.get("synopsis") or "", image_path,
-                f"https://myanimelist.net/anime/{row['mal_id']}",
-            )
-            updated += 1
+                pass  # transient failure: no cooldown, retried next startup
             _time.sleep(1.2)  # MAL v2 allows ~60 requests/min
         if updated:
             print(f"[widget] backfilled details for {updated} anime", file=sys.stderr)

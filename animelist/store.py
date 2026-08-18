@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import config
@@ -91,6 +91,9 @@ class Store:
         cols = {r[1] for r in self._db.execute("PRAGMA table_info(new_content)")}
         if "badge_ids" not in cols:
             self._db.execute("ALTER TABLE new_content ADD COLUMN badge_ids TEXT")
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(anime)")}
+        if "details_attempted_at" not in cols:
+            self._db.execute("ALTER TABLE anime ADD COLUMN details_attempted_at TEXT")
         self._db.commit()
 
     def close(self) -> None:
@@ -256,22 +259,31 @@ class Store:
             ).fetchall()
             return [dict(r) for r in rows]
 
-    def rows_needing_details(self, min_synopsis_len: int = 200) -> list[dict]:
+    def rows_needing_details(self, min_synopsis_len: int = 200,
+                             retry_after_days: float = 7.0) -> list[dict]:
         """Anime rows that would benefit from a details backfill:
 
         - known rows whose synopsis is missing or a MAL stub ("Second season
-          of X."), or whose episode count is unknown, plus
-        - orphan ids that are watched or on the MAL list but have no ``anime``
-          row yet (e.g. prequels completed by franchise sync) — they need a
-          full detail fetch to become visible cards.
+          of X."), or whose episode count is unknown — but only if we have
+          not already attempted within ``retry_after_days``. A brand-new
+          anime may legitimately have a short synopsis with no prequel to
+          fall back on; re-fetching it on every startup would waste API
+          calls, so after one attempt it waits out the cooldown.
+        - orphan ids that are watched or on the MAL list but have no
+          ``anime`` row yet (e.g. prequels completed by franchise sync) —
+          they need a full detail fetch to become visible cards, and are
+          always retried (there is no row to record an attempt on).
 
         Returns ``[{"mal_id": int, "title": str | None}]``.
         """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=retry_after_days))\
+            .isoformat(timespec="seconds")
         with self._lock:
             rows = self._db.execute(
                 """SELECT mal_id, title FROM anime
-                   WHERE synopsis IS NULL OR length(trim(synopsis)) < ?
-                      OR num_episodes IS NULL
+                   WHERE (synopsis IS NULL OR length(trim(synopsis)) < ?
+                          OR num_episodes IS NULL)
+                     AND (details_attempted_at IS NULL OR details_attempted_at < ?)
                    UNION
                    SELECT DISTINCT w.mal_id AS mal_id, NULL AS title FROM watched w
                    LEFT JOIN anime a ON a.mal_id = w.mal_id WHERE a.mal_id IS NULL
@@ -279,9 +291,20 @@ class Store:
                    SELECT DISTINCT m.mal_id AS mal_id, NULL AS title FROM mal_list m
                    LEFT JOIN anime a ON a.mal_id = m.mal_id WHERE a.mal_id IS NULL
                    ORDER BY mal_id""",
-                (min_synopsis_len,),
+                (min_synopsis_len, cutoff),
             ).fetchall()
             return [dict(r) for r in rows]
+
+    def set_details_attempted(self, mal_id: int, at: str | None = None) -> None:
+        """Record that a details backfill was attempted for this anime, so the
+        startup backfill throttles re-attempts (e.g. for a genuinely short
+        synopsis with no prequel to fall back on)."""
+        with self._lock:
+            self._db.execute(
+                "UPDATE anime SET details_attempted_at = ? WHERE mal_id = ?",
+                (at or _utcnow(), mal_id),
+            )
+            self._db.commit()
 
     # -- settings -------------------------------------------------------------
 
