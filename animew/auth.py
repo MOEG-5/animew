@@ -3,7 +3,7 @@
 MAL only supports the *plain* PKCE method (code_challenge == code_verifier) —
 see https://myanimelist.net/apiconfig/references/authorization. Access tokens
 live ~1 hour, refresh tokens ~1 month. Tokens are stored in
-~/.local/share/animelist-widget/token.json (chmod 600).
+~/.local/share/animew-widget/token.json (chmod 600).
 """
 
 from __future__ import annotations

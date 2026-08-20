@@ -1,6 +1,6 @@
 """SQLite persistence layer (PRD F6).
 
-State lives in ~/.local/share/animelist-widget/animelist.db.
+State lives in ~/.local/share/animew-widget/animew.db.
 Tables: anime, watched, new_content, settings.
 """
 

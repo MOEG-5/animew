@@ -1,6 +1,6 @@
 import unittest
 
-from animelist.widget import wrap_tooltip
+from animew.widget import wrap_tooltip
 
 
 class TooltipTest(unittest.TestCase):

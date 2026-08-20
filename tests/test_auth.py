@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from animelist import auth
+from animew import auth
 
 
 class TestVerifier(unittest.TestCase):

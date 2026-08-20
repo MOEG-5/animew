@@ -86,7 +86,7 @@ class MALSync:
         offset, count = 0, 0
         while True:
             data = self._request(
-                "GET", "/users/@me/animelist",
+                "GET", "/users/@me/animew",
                 params={"fields": LIST_FIELDS, "limit": _PAGE, "offset": offset},
             )
             for item in data.get("data", []):

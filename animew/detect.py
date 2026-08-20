@@ -1,8 +1,8 @@
 """M1 CLI: connect to mpv IPC, parse titles, resolve via MAL, print results.
 
 Usage:
-    python -m animelist.detect             # watch until Ctrl-C
-    python -m animelist.detect --once      # stop after the first file event
+    python -m animew.detect             # watch until Ctrl-C
+    python -m animew.detect --once      # stop after the first file event
 """
 
 from __future__ import annotations

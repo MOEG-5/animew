@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from animelist.checker import CHECK_INTERVAL, NewContentChecker
-from animelist.store import Store
+from animew.checker import CHECK_INTERVAL, NewContentChecker
+from animew.store import Store
 
 
 class FakeMAL:

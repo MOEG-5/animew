@@ -6,7 +6,7 @@ import time
 import unittest
 from pathlib import Path
 
-from animelist.ipc import watch_socket
+from animew.ipc import watch_socket
 
 DEFAULT_EPISODE = "/media/Anime/[Demo] Lv999 no Murabito - 05 (1080p) [ABC].mkv"
 

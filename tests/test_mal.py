@@ -1,6 +1,6 @@
 import unittest
 
-from animelist.mal import (
+from animew.mal import (
     MIN_REAL_SYNOPSIS,
     MALClient,
     franchise_synopsis,

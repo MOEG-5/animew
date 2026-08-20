@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from animelist import config
-from animelist.auth import TokenStore
-from animelist.store import Store
-from animelist.sync import MALSync
+from animew import config
+from animew.auth import TokenStore
+from animew.store import Store
+from animew.sync import MALSync
 
 
 class FakeResp:
@@ -309,7 +309,7 @@ class SyncTest(unittest.TestCase):
             })
 
         self.session.handler = handler
-        with mock.patch("animelist.sync.ensure_image", return_value=None):
+        with mock.patch("animew.sync.ensure_image", return_value=None):
             n = self.sync.import_list()
         self.assertEqual(n, 2)
         self.assertEqual(calls, [0, 100])

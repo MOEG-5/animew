@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-APP_NAME = "animelist-widget"
+APP_NAME = "animew-widget"
 
 MAL_API_BASE = "https://api.myanimelist.net/v2"
 MAL_OAUTH_AUTHORIZE = "https://myanimelist.net/v1/oauth2/authorize"
@@ -37,7 +37,7 @@ def xdg_cache_dir() -> Path:
 
 
 CONFIG_FILE = xdg_config_dir() / "config.json"
-DB_PATH = xdg_data_dir() / "animelist.db"
+DB_PATH = xdg_data_dir() / "animew.db"
 TOKEN_FILE = xdg_data_dir() / "token.json"
 IMAGE_CACHE_DIR = xdg_cache_dir() / "images"
 

@@ -6,7 +6,7 @@ import requests
 
 from . import config
 
-_USER_AGENT = "animelist-widget/0.1 (personal tool)"
+_USER_AGENT = "animew-widget/0.1 (personal tool)"
 
 
 def _ext(url: str) -> str:

@@ -1,4 +1,4 @@
-# AnimeList Widget
+# AnimeW Widget
 
 A minimal Linux desktop widget that tracks what you watch in **mpv** and keeps your **MyAnimeList** list in sync — automatically. It sits quietly in a corner of your screen (always-on-bottom, dark theme) and shows one card per anime with your latest watched episode.
 
@@ -30,7 +30,7 @@ A minimal Linux desktop widget that tracks what you watch in **mpv** and keeps y
 
 3. **Configuration**:
    ```bash
-   cp config.example.json ~/.config/animelist-widget/config.json
+   cp config.example.json ~/.config/animew-widget/config.json
    # then put your client ID (+ secret) into that file
    ```
 
@@ -38,13 +38,13 @@ A minimal Linux desktop widget that tracks what you watch in **mpv** and keeps y
    ```bash
    python3 -m venv .venv
    .venv/bin/pip install -r requirements.txt
-   .venv/bin/python -m animelist.widget
+   .venv/bin/python -m animew.widget
    ```
    On first launch your browser opens for a one-time MyAnimeList authorization. After that, click the ⚙ in the corner and add your release tag(s) — the widget only tracks files whose names contain one of them.
 
 5. *(Optional)* **Autostart** — copy the example autostart entry and adjust paths:
    ```bash
-   cp animelist-widget.desktop.example ~/.config/autostart/animelist-widget.desktop
+   cp animew-widget.desktop.example ~/.config/autostart/animew-widget.desktop
    ```
 
 ## Usage
@@ -70,7 +70,7 @@ The list mirror is pulled from MAL on every startup, and locally-watched episode
 
 ## Screenshot
 
-![AnimeList Widget](screenshot.png)
+![AnimeW Widget](screenshot.png)
 
 ## License
 

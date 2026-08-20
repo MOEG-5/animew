@@ -307,7 +307,7 @@ class AuthDialog(QDialog):
         self.setWindowTitle("MyAnimeList authorization")
         lay = QVBoxLayout(self)
         self.label = QLabel(
-            "AnimeList Widget needs permission to read and update your\n"
+            "AnimeW Widget needs permission to read and update your\n"
             "MyAnimeList list.\n\n"
             "A browser tab has opened — click Allow, then return here."
         )
@@ -452,7 +452,7 @@ class Widget(QWidget):
         self.current: dict | None = None
 
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowTitle("AnimeList Widget")
+        self.setWindowTitle("AnimeW Widget")
         self.setStyleSheet(APP_CSS)
 
         panel = QFrame()
@@ -697,11 +697,11 @@ class Widget(QWidget):
 
     def _handle_new_content(self, msg: dict) -> None:
         for item in msg.get("new_items", []):
-            self._notify("AnimeList Widget", f"New content detected: {item.get('target_title')}")
+            self._notify("AnimeW Widget", f"New content detected: {item.get('target_title')}")
             self.store.set_new_content_notified(item["source_mal_id"], item["target_mal_id"])
         for row in msg.get("pending", []):
             if row.get("target_title"):
-                self._notify("AnimeList Widget", f"New content detected: {row['target_title']}")
+                self._notify("AnimeW Widget", f"New content detected: {row['target_title']}")
             self.store.set_new_content_notified(row["source_mal_id"], row["target_mal_id"])
 
     def contextMenuEvent(self, event) -> None:
@@ -749,13 +749,13 @@ class Widget(QWidget):
         title = msg.get("title") or "anime"
         ep = msg.get("episode")
         body = f"Rewatched {title} EP {ep:02d} — already marked as watched." if ep is not None else f"Rewatched {title} — already marked."
-        self._notify("AnimeList Widget", body)
+        self._notify("AnimeW Widget", body)
 
     @staticmethod
     def _notify(summary: str, body: str) -> None:
         try:
             subprocess.run(
-                ["notify-send", "-a", "AnimeList", summary, body],
+                ["notify-send", "-a", "AnimeW", summary, body],
                 timeout=5, capture_output=True,
             )
         except (OSError, subprocess.TimeoutExpired):
@@ -764,7 +764,7 @@ class Widget(QWidget):
 
 def main(argv: list[str] | None = None) -> int:
     app = QApplication(sys.argv if argv is None else argv)
-    app.setApplicationName("AnimeList Widget")
+    app.setApplicationName("AnimeW Widget")
     cfg = config.load_config()
     store = Store()
     out: queue.Queue = queue.Queue()

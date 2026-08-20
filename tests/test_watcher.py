@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from animelist.mal import franchise_synopsis, is_real_synopsis
-from animelist.store import Store
-from animelist.watcher import WatchWorker
+from animew.mal import franchise_synopsis, is_real_synopsis
+from animew.store import Store
+from animew.watcher import WatchWorker
 
 
 class FakeMAL:

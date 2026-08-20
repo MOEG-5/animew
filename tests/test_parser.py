@@ -1,6 +1,6 @@
 import unittest
 
-from animelist.parser import parse_title
+from animew.parser import parse_title
 
 TAGS = ["Demo"]
 

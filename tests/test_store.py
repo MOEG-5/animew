@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from animelist.store import Store
+from animew.store import Store
 
 
 class TestStore(unittest.TestCase):
@@ -164,7 +164,7 @@ class TestStore(unittest.TestCase):
         s.close()
 
     def test_settings_helpers(self):
-        from animelist.store import (
+        from animew.store import (
             COLUMNS_KEY,
             IMAGE_WIDTH_KEY,
             ROWS_KEY,
